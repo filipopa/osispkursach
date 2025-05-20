@@ -25,6 +25,7 @@ enum class TokenType {
     DIRECTIVE_END,    // .END
     DIRECTIVE_EQU,    // .EQU
     DIRECTIVE_ASCII,  // .ASCII
+    DIRECTIVE_FILL,   // .FILL
 
     // Символы
     COMMA,        // ,
@@ -86,7 +87,8 @@ private:
         {".BYTE", TokenType::DIRECTIVE_BYTE},
         {".END", TokenType::DIRECTIVE_END},
         {".EQU", TokenType::DIRECTIVE_EQU},
-        {".ASCII", TokenType::DIRECTIVE_ASCII}
+        {".ASCII", TokenType::DIRECTIVE_ASCII},
+        {".FILL", TokenType::DIRECTIVE_FILL}
     };
 };
 

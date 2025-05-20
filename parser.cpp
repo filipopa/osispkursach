@@ -1,13 +1,15 @@
 #include "parser.hpp"
 #include <unordered_map>
+#include <iostream>
 
 Parser::Parser(const std::vector<Token>& tokens) : tokens(tokens) {}
 
 std::unique_ptr<Program> Parser::parseProgram() {
     auto program = ASTBuilder::createProgram();
-    
+    printf("Size: %d \n",tokens.size());
     while (currentPos < tokens.size() && !match(TokenType::END_OF_FILE)) {
         try {
+            printf("\nCurrent pos: %d %c %c",currentPos,currentToken().value,peekToken().value);
             if (auto stmt = parseStatement()) {
                 program->statements.push_back(std::move(stmt));
             }
@@ -25,11 +27,12 @@ std::unique_ptr<Program> Parser::parseProgram() {
 }
 
 std::unique_ptr<ASTNode> Parser::parseStatement() {
+    
     // Обработка меток
+
     if (match(TokenType::LABEL) && peekToken().type == TokenType::COLON) {
         return parseLabel();
     }
-    
     // Обработка инструкций
     static const std::unordered_map<TokenType, Instruction::Type> instrMap = {
         {TokenType::MOV, Instruction::Type::MOV},
@@ -54,7 +57,11 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
     // Обработка директив
     static const std::unordered_map<TokenType, Directive::Type> dirMap = {
         {TokenType::DIRECTIVE_WORD, Directive::Type::WORD},
-        // ... остальные директивы
+        {TokenType::DIRECTIVE_BYTE, Directive::Type::BYTE},
+        {TokenType::DIRECTIVE_ASCII, Directive::Type::ASCII},
+        {TokenType::DIRECTIVE_END, Directive::Type::END},
+        {TokenType::DIRECTIVE_EQU, Directive::Type::EQU},
+        {TokenType::DIRECTIVE_FILL, Directive::Type::FILL},
     };
     
     if (dirMap.count(currentToken().type)) {
@@ -74,7 +81,6 @@ std::unique_ptr<Label> Parser::parseLabel() {
     if (!match(TokenType::END_OF_FILE)) {
         stmt = parseStatement();
     }
-    
     return ASTBuilder::createLabel(labelName, std::move(stmt));
 }
 
@@ -94,7 +100,7 @@ std::unique_ptr<Instruction> Parser::parseInstruction() {
             dst = parseOperand();
         }
     }
-    
+
     switch (type) {
         case Instruction::Type::MOV: return ASTBuilder::createMov(std::move(src), std::move(dst));
         case Instruction::Type::CMP: return ASTBuilder::createCmp(std::move(src), std::move(dst));
@@ -153,7 +159,6 @@ std::unique_ptr<Operand> Parser::parseOperand() {
     AddrMode mode = parseAddressingMode();
     auto op = std::make_unique<Operand>();
     op->mode = mode;
-
     switch (mode) {
         // Регистровый: Rn
         case AddrMode::REGISTER: {
@@ -246,7 +251,6 @@ std::unique_ptr<Operand> Parser::parseOperand() {
         default:
             throw std::runtime_error("Unsupported addressing mode");
     }
-
     return op;
 }
 AddrMode Parser::parseAddressingMode() {

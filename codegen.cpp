@@ -1,5 +1,6 @@
 #include "codegen.hpp"
 #include <algorithm>
+#include <iostream>
 
 std::vector<uint16_t> CodeGenerator::generate(Program& program) {
     output.clear();
@@ -9,6 +10,7 @@ std::vector<uint16_t> CodeGenerator::generate(Program& program) {
 }
 
 void CodeGenerator::emit(uint16_t word) {
+    printf("Writing in bin: %04o (hex: %04X)\n", word, word);
     output.push_back(word);
     current_pc++;
 }
@@ -33,10 +35,11 @@ void CodeGenerator::encodeInstruction(const Instruction& instr) {
     
     // Определяем опкод
     switch (instr.type) {
+        
         // Двухоперандные инструкции
         case Instruction::Type::MOV: opcode = 0010000; break;  // MOV src,dst
         case Instruction::Type::CMP: opcode = 0020000; break;  // CMP src,dst
-        case Instruction::Type::ADD: opcode = 0060000; break;  // ADD src,dst
+        case Instruction::Type::ADD: opcode = 060000; break;  // ADD src,dst
         case Instruction::Type::SUB: opcode = 0160000; break;  // SUB src,dst
         
         // Однооперандные инструкции
@@ -66,11 +69,22 @@ void CodeGenerator::encodeInstruction(const Instruction& instr) {
         default:
             throw std::runtime_error("Unsupported instruction");
     }
+
+    printf("=== DEBUG ===\n");
+    printf("Opcode: %06o (oct) = %04X (hex)\n", opcode, opcode);
     
     // Кодируем операнды для обычных инструкций
     uint16_t src_mode = 0;
+        if (instr.src) {
+        src_mode = encodeOperand(*instr.src, true);
+        printf("Src mode: %03o (oct) = %02X (hex)\n", src_mode, src_mode);
+    }
     uint16_t dst_mode = 0;
-    
+        if (instr.dst) {
+        dst_mode = encodeOperand(*instr.dst, false);
+        printf("Dst mode: %03o (oct) = %02X (hex)\n", dst_mode, dst_mode);
+    }
+
     if (instr.src && instr.type != Instruction::Type::JMP) {
         src_mode = encodeOperand(*instr.src, true);
     }
@@ -91,8 +105,10 @@ void CodeGenerator::encodeInstruction(const Instruction& instr) {
         return;
     }
     
-    emit(opcode | (src_mode << 6) | dst_mode);
-    
+    uint16_t word = opcode | (src_mode * 0100) | dst_mode; 
+    printf("Final word: %06o (oct) = %04X (hex)\n", word, word);
+    emit(word);
+
     // Дополнительные слова для некоторых режимов адресации
     if (instr.src && (instr.src->mode == AddrMode::IMMEDIATE || 
                       instr.src->mode == AddrMode::ABSOLUTE ||
@@ -107,6 +123,7 @@ void CodeGenerator::encodeInstruction(const Instruction& instr) {
                       instr.dst->mode == AddrMode::INDEXED)) {
         emit(instr.dst->value);
     }
+
 }
 
 uint16_t CodeGenerator::encodeOperand(const Operand& op, bool is_src) {
